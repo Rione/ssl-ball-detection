@@ -8,16 +8,6 @@ highColor = np.array([15, 255, 255])
 
 # 抽出するオレンジ色の塊のしきい値
 areaRatioThreshold = 0.005
-"""
-def clahe(img_name):
-
-    img_yuv = cv2.cvtColor(img_name, cv2.COLOR_BGR2YUV) # RGB => YUV(YCbCr)
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8)) # claheオブジェクトを生成
-    img_yuv[:,:,0] = clahe.apply(img_yuv[:,:,0]) # 輝度にのみヒストグラム平坦化
-    img = cv2.cvtColor(img_yuv, cv2.COLOR_YUV2BGR) # YUV => RGB
-
-    return img
-"""
 
 def calculateCentroid(frame, areaRatioThreshold, lowColor, highColor):
     h, w, c = frame.shape
