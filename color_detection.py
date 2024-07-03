@@ -5,8 +5,8 @@ from libcamera import Transform
 class proccessImage:
     def applyClahe(frame):
         yuv = cv2.cvtColor(frame, cv2.COLOR_BGR2YUV) 
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8)) 
-        yuv[:,:,0] = clahe.apply(yuv[:,:,0]) 
+        clahe = cv2.createCLAHE(clipLimit = 2.0, tileGridSize = (8, 8)) 
+        yuv[:, :, 0] = clahe.apply(yuv[:, :, 0]) 
         img = cv2.cvtColor(yuv, cv2.COLOR_YUV2BGR) 
 
         return img
@@ -20,19 +20,17 @@ class detectBall:
 
         return hsv, contours
     
-    def calculateCentroid(frame, contours, areaRatioThreshold, lowColor, highColor):
+    def calculateCentroid(frame, contours, areaRatioThreshold):
         h, w, c = frame.shape
         areas = np.array(list(map(cv2.contourArea, contours)))
 
         if len(areas) == 0 or np.max(areas) / (h * w) < areaRatioThreshold:
-            # 見つからなかったらNoneを返す
             print("the area is too small")
             
             return None
         else:
-            # 面積が最大の塊の重心を計算し返す
-            max_idx = np.argmax(areas)
-            result = cv2.moments(contours[max_idx])
+            maxIdx = np.argmax(areas)
+            result = cv2.moments(contours[maxIdx])
             x = int(result["m10"] / result["m00"])
             y = int(result["m01"] / result["m00"])
 
