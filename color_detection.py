@@ -2,58 +2,60 @@ import cv2
 import numpy as np
 from libcamera import Transform
 
-# オレンジ色のHSV範囲
-lowColor = np.array([5, 150, 150])
-highColor = np.array([15, 255, 255])
+class proccessImage:
+    def applyClahe(frame):
+        yuv = cv2.cvtColor(frame, cv2.COLOR_BGR2YUV) 
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8)) 
+        yuv[:,:,0] = clahe.apply(yuv[:,:,0]) 
+        img = cv2.cvtColor(yuv, cv2.COLOR_YUV2BGR) 
 
-# 抽出するオレンジ色の塊のしきい値
-areaRatioThreshold = 0.005
+        return img
 
-def calculateCentroid(frame, areaRatioThreshold, lowColor, highColor):
-    h, w, c = frame.shape
+class detectBall:
+    def extractSpecificColor(frame, lowColor, highColor):
+        h, w, c = frame.shape
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        mask = cv2.inRange(hsv, lowColor, highColor)
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    # hsv色空間に変換
-    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        return hsv, contours
     
-    # 色を抽出する
-    mask = cv2.inRange(hsv, lowColor, highColor)
+    def calculateCentroid(frame, contours, areaRatioThreshold, lowColor, highColor):
+        h, w, c = frame.shape
+        areas = np.array(list(map(cv2.contourArea, contours)))
 
-    # 輪郭抽出
-    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    
-    # 面積を計算
-    areas = np.array(list(map(cv2.contourArea, contours)))
+        if len(areas) == 0 or np.max(areas) / (h * w) < areaRatioThreshold:
+            # 見つからなかったらNoneを返す
+            print("the area is too small")
+            
+            return None
+        else:
+            # 面積が最大の塊の重心を計算し返す
+            max_idx = np.argmax(areas)
+            result = cv2.moments(contours[max_idx])
+            x = int(result["m10"] / result["m00"])
+            y = int(result["m01"] / result["m00"])
 
-    if len(areas) == 0 or np.max(areas) / (h * w) < areaRatioThreshold:
-        # 見つからなかったらNoneを返す
-        print("the area is too small")
+            return (x, y)
 
-        return None
-    else:
-        # 面積が最大の塊の重心を計算し返す
-        max_idx = np.argmax(areas)
-        result = cv2.moments(contours[max_idx])
-        x = int(result["m10"] / result["m00"])
-        y = int(result["m01"] / result["m00"])
-
-        return (x, y)
+class display:
+    def indicateCentroid(frame, pos):
+        centroid = cv2.circle(frame, (pos[0], pos[1]), 10, (255, 0, 0), -1)
+        cv2.imshow("Frame", centroid)
 
 def main():
+    lowColor = np.array([5, 150, 150])
+    highColor = np.array([15, 255, 255])
+    areaRatioThreshold = 0.005
+
     camera = cv2.VideoCapture(0)
     while True:
         ret, frame = camera.read()
-
-        # 位置を抽出
-        pos = calculateCentroid(frame, areaRatioThreshold, lowColor, highColor)
-
-        cnt = cv2.circle(frame, pos, 10, (255, 0, 0), -1)
-
-        #if pos is not None:
-        cv2.circle(frame, pos, 10, (255, 0, 0), -1)
+        pos = detectBall.calculateCentroid(frame, areaRatioThreshold, lowColor, highColor)
+        display.indicateCentroid(frame, pos)
 
         print("centroid of ball:")
         print(pos)
-        cv2.imshow("Frame", cnt)
 
         key = cv2.waitKey(1)
 
