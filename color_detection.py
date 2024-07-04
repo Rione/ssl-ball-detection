@@ -17,7 +17,7 @@ class ProcessImage:
 """
 
 class DetectOrangeBall:
-    def __init__(self, lowColor = np.array([5, 150, 150]), highColor = np.array([15, 255, 255]), threshold = 0.005):
+    def __init__(self, lowColor = np.array([0, 150, 150]), highColor = np.array([15, 255, 255]), threshold = 0.005):
         self.lowColor = lowColor
         self.highColor = highColor
         self.threshold = threshold
@@ -42,8 +42,9 @@ class DetectOrangeBall:
             y = int(result["m01"] / result["m00"])
             return (x, y)
 
+"""
 class Display:
-    def __init__(self, color = (255, 0, 0), radius = 10, windowName = "Frame"):
+    def __init__(self, color = (255, 0, 0), radius = 5, windowName = "Frame"):
         self.color = color
         self.radius = radius
         self.windowName = windowName
@@ -54,13 +55,14 @@ class Display:
             cv2.imshow(self.windowName, centroid)
         else:
             cv2.imshow(self.windowName, frame)
-        
+"""
+
 def main():
-    camera = cv2.VideoCapture(0)
     #processImage = ProcessImage()
     detectOrangeBall = DetectOrangeBall()
-    display = Display()
+    #display = Display()
 
+    camera = cv2.VideoCapture(0)
     while True:
         ret, frame = camera.read()
         if not ret:
