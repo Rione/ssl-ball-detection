@@ -5,10 +5,6 @@
 
 int main(){
     DetectOrangeBall detectOrangeBall(threshold, lowColor, highColor);
-    cv::Scalar lowColor(0, 150, 150);
-    cv::Scalar highColor(15, 255, 255);
-    double threshold = 0.005;
-
     cv::VideoCapture cap(0);
 
     if(!cap.isOpened()){

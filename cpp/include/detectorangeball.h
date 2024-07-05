@@ -7,9 +7,11 @@
 class DetectOrangeBall
 {
     public:
-        DetectOrangeBall(cv::Scalar &lowColor = cv::Scalar(0, 150, 150), 
-                        cv::Scalar &highColor = cv::Scalar(15, 255, 255), 
-                        double threshold = 0.005);
+        DetectOrangeBall(
+            cv::Scalar &lowColor = cv::Scalar(0, 150, 150), 
+            cv::Scalar &highColor = cv::Scalar(15, 255, 255), 
+            double threshold = 0.005
+        );
         cv::Point calculateCentroid(const cv::Mat &frame);
 
     private:

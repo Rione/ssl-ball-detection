@@ -2,9 +2,9 @@
 #include <iostream>
 
 DetectOrangeBall::detectOrangeBall(double threshold, const cv::Scalar &lowColor, const cv::Scalar &highColor)
-    : threshold(threshold), lowColor(lowColor), highColor(highColor) {}
+    : threshold(threshold), lowColor(lowColor), highColor(highColor){}
 
-cv::Point detectOrangeBall::calculateCentroid(const cv::Mat &frame) {
+cv::Point detectOrangeBall::calculateCentroid(const cv::Mat &frame){
     int h, w = frame.rows, frame.cols;
 
     //RGB=>HSV
@@ -25,7 +25,7 @@ cv::Point detectOrangeBall::calculateCentroid(const cv::Mat &frame) {
         areas[i] = cv::contourArea(contours[i]);
     }
 
-    //if orange area is too small
+    //if the orange area is too small
     if(areas.empty() || *std::max_element(areas.begin(), areas.end()) / (h * w) < threshold){
         std::cout << "The area is too small" << std::endl;
 
