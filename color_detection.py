@@ -33,9 +33,9 @@ class DetectOrangeBall:
     def interpolateContours(self, contour):
         contour = contour.reshape(-1, 2)
         x, y = contour[:, 0], contour[:, 1]
-        tck, u = splprep([x, y], s=0)
+        tck, u = splprep([x, y], s = 0)
         uNew = np.linspace(u.min(), u.max(), 1000)
-        xNew, yNew = splev(uNew, tck, der=0)
+        xNew, yNew = splev(uNew, tck, der = 0)
 
         interpolatedContour = np.vstack((xNew, yNew)).T.astype(np.int32).reshape(-1, 1, 2)
         return interpolatedContour
@@ -63,7 +63,7 @@ class DetectOrangeBall:
                 return None, None
 
 class Display:
-    def __init__(self, color=(255, 0, 0), radius=5, windowName="Frame"):
+    def __init__(self, color = (255, 0, 0), radius = 5, windowName = "Frame"):
         self.color = color
         self.radius = radius
         self.windowName = windowName
@@ -99,8 +99,8 @@ def main():
         if key == 27:
             break
 
-        camera.release()
-        cv2.destroyAllWindows()
+    camera.release()
+    cv2.destroyAllWindows()
 
 if __name__ == "__main__":
     main()
