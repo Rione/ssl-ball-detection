@@ -5,16 +5,14 @@ from libcamera import Transform
 
 """
 class ProcessImage:
-    def __init__(self, clipLimit=2.0, tileGridSize=(8, 8)):
+    def __init__(self, clipLimit = 4, tileGridSize = (8, 8)):
         self.clipLimit = clipLimit
         self.tileGridSize = tileGridSize
 
-    def applyClahe(self, frame):
-        yuv = cv2.cvtColor(frame, cv2.COLOR_BGR2YUV)
-        clahe = cv2.createCLAHE(clipLimit=self.clipLimit, tileGridSize=self.tileGridSize)
-        yuv[:, :, 0] = clahe.apply(yuv[:, :, 0])
-        rgb = cv2.cvtColor(yuv, cv2.COLOR_YUV2BGR)
-        return rgb
+    def applyMorphogy(self, frame):
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+        opening = cv2.morphologyEx(frame, cv2.MORPH_OPEN, kernel)
+        return opening
 """
 
 class DetectOrangeBall:
@@ -26,7 +24,6 @@ class DetectOrangeBall:
     def extractSpecificColor(self, frame):
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         mask = cv2.inRange(hsv, self.lowColor, self.highColor)
-        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         return hsv, contours
 
@@ -34,9 +31,8 @@ class DetectOrangeBall:
         contour = contour.reshape(-1, 2)
         x, y = contour[:, 0], contour[:, 1]
         tck, u = splprep([x, y], s = 0)
-        uNew = np.linspace(u.min(), u.max(), 1000)
+        uNew = np.linspace(u.min(), u.max(), 100)
         xNew, yNew = splev(uNew, tck, der = 0)
-
         interpolatedContour = np.vstack((xNew, yNew)).T.astype(np.int32).reshape(-1, 1, 2)
         return interpolatedContour
 
@@ -49,7 +45,6 @@ class DetectOrangeBall:
         else:
             maxIdx = np.argmax(areas)
             contour = contours[maxIdx]
-
             hull = cv2.convexHull(contour)
             hull = self.interpolateContours(hull)
             area = cv2.contourArea(hull)
@@ -89,7 +84,7 @@ def main():
             break
 
         #frame = cv2.imread("ball_sample2.jpg")
-        # frame = processImage.applyClahe(frame)
+        #frame = processImage.applyMorphogy(frame)
         hsv, contours = detectOrangeBall.extractSpecificColor(frame)
         pos, hull = detectOrangeBall.calculateCentroid(hsv.shape, contours)
         print("centroid of the ball:", pos)
