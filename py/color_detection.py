@@ -10,7 +10,7 @@ class ImageProcessor:
         self.size = size
         self.operation = operation
 
-    def applyMorphogy(self, frame):
+    def applyMorphology(self, frame):
         kernel = cv2.getStructuringElement(self.shape, self.size)
         opening = cv2.morphologyEx(frame, self.operation, kernel)
         return opening 
@@ -107,7 +107,7 @@ def main():
             print("Error: Cannot load the image")
             break
 
-        #frame = imageProcessor.applyMorphology(frame)
+        frame = imageProcessor.applyMorphology(frame)
         pos, hull = ballDetector.detect(frame)
         print("centroid of the ball:", pos)
         imageDisplayer.indicateCentroid(frame, pos, hull)
