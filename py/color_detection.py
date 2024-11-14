@@ -89,7 +89,7 @@ class ImageDisplayer:
 
     def indicateCentroid(self, frame, pos, hull):
         if pos is not None:
-            contour = cv2.drawContours(frame, [hull], -1, (0, 0, 255), 2)
+            contour = cv2.drawContours(frame, [hull], -1, self.color, 2)
             centroid = cv2.circle(contour, (pos[0], pos[1]), self.radius, self.color, -1)
             cv2.imshow(self.windowName, centroid)
         else:
