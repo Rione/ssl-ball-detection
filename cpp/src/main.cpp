@@ -2,6 +2,7 @@
 #include "colorextractor.h"
 #include "centroidcalculator.h"
 #include "imagedisplayer.h"
+#include "videocapture.h"
 #include <raspiVideoCapture.h>
 #include <opencv2/opencv.hpp>
 #include <iostream>
@@ -12,16 +13,12 @@ int main(){
     ColorExtractor colorExtractor;
     CentroidCalculator centroidCalculator;
     ImageDisplayer imageDisplayer;
+    VideoCapture videoCapture;
 
-    cv::VideoCapture cap(0);
-    if(!cap.isOpened()){
-        printf("Error: Cannot open the camera\n");
-        return -1;
-    }
-
+    cv::Mat frame;
+    //videoCapture.setProperty();
     while(true){
-        cv::Mat frame;
-        cap >> frame;
+        videoCapture.read(frame);
         if(frame.empty()){
             printf("Error: Cannot load the image\n");
             break;
@@ -40,7 +37,7 @@ int main(){
         }
     }
 
-    cap.release();
+    videoCapture.release();
     cv::destroyAllWindows();
 
     return 0;

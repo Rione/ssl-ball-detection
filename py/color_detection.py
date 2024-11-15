@@ -95,14 +95,33 @@ class ImageDisplayer:
         else:
             cv2.imshow(self.windowName, frame)
 
+
+class VideoCapture:
+    def __init__(self, device=0, fps=30, bufferSize=4):
+        self.cap = cv2.VideoCapture(device)
+        self.fps = fps
+        self.bufferSize = bufferSize
+        
+    def setProperties(self):
+        self.cap.set(cv2.CAP_PROP_FPS, self.fps)
+        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, self.bufferSize)
+
+    def read(self):
+        self.cap.read()
+    
+    def release(self):
+        self.cap.release()
+
+
 def main():
     imageProcessor = ImageProcessor()
     ballDetector = BallDetector()
     imageDisplayer = ImageDisplayer()
+    videoCapture = VideoCapture()
 
-    cap = cv2.VideoCapture(0)
+    videoCapture.setProperties()
     while True:
-        ret, frame = cap.read()
+        ret, frame = videoCapture.read()
         if not ret:
             print("Error: Cannot load the image")
             break
@@ -112,11 +131,10 @@ def main():
         print("centroid of the ball:", pos)
         imageDisplayer.indicateCentroid(frame, pos, hull)
 
-        key = cv2.waitKey(1)
-        if key == 27:
+        if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
-    cap.release()
+    videoCapture.release()
     cv2.destroyAllWindows()
 
 if __name__ == "__main__":
