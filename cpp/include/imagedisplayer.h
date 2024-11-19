@@ -2,7 +2,7 @@
 #define IMAGEDISPLAYER_H
 
 #include <opencv2/opencv.hpp>
-#include <string>
+#include <vector>
 
 class ImageDisplayer{
     public:
@@ -10,11 +10,12 @@ class ImageDisplayer{
                         int radius=5, 
                         const std::string &windowName="Frame");
 
-        void indicateCentroid(cv::Mat &frame, const cv::Point &pos, const std::vector<cv::Point> &hull);
+        void indicateCentroid(cv::Mat &frame, const cv::Point &center, const std::vector<cv::Point> &circle);
 
     private:
         cv::Scalar color;
         int radius;             
         std::string windowName;
 };
+
 #endif // IMAGEDISPLAYER_H
