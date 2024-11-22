@@ -4,11 +4,11 @@
 #include "imageprocessor.h"
 #include "centroidcalculator.h"
 
-class BallDetector {
+class BallDetector{
 public:
-    BallDetector(int mode = cv::RETR_EXTERNAL, int method = cv::CHAIN_APPROX_SIMPLE, double threshold = 5e-3);
+    BallDetector(int mode=cv::RETR_EXTERNAL, int method=cv::CHAIN_APPROX_SIMPLE, double threshold=5e-3);
 
-    std::pair<cv::Point, std::vector<cv::Point>> detect(const cv::Mat &frame);
+    std::pair<cv::Point, std::vector<cv::Point>> detect(const cv::Mat& frame);
 
 private:
     ImageProcessor imageProcessor;

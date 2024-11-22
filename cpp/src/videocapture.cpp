@@ -10,7 +10,7 @@ bool VideoCapture::setProperties(){
     return success;
 }
 
-bool VideoCapture::read(cv::Mat &frame){
+bool VideoCapture::read(cv::Mat& frame){
     return cap.read(frame);
 }
 

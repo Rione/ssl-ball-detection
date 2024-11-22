@@ -8,9 +8,9 @@ class ImageDisplayer{
     public:
         ImageDisplayer(cv::Scalar color=cv::Scalar(255, 0, 0), 
                         int radius=5, 
-                        const std::string &windowName="Frame");
+                        const std::string& windowName="Frame");
 
-        void indicateCentroid(cv::Mat &frame, const cv::Point &center, const std::vector<cv::Point> &circle);
+        void indicateCentroid(cv::Mat& frame, const cv::Point& center, const std::vector<cv::Point>& circle);
 
     private:
         cv::Scalar color;

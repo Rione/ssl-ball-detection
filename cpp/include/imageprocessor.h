@@ -13,9 +13,7 @@ class ImageProcessor{
                         cv::Scalar lowColor=cv::Scalar(5, 80, 60),
                         cv::Scalar highColor=cv::Scalar(25, 255, 255));
         
-        cv:: Mat filterFrame(const cv::Mat &frame);
-        cv::Mat applyMorphologicalTransformations(const cv::Mat &frame);
-        void extractColors(const cv::Mat &frame, cv::Mat &hsv, cv::Mat &mask);
+        void extractColors(const cv::Mat& frame, cv::Mat& hsv, cv::Mat& mask);
 
     private:
         int d;
@@ -26,6 +24,9 @@ class ImageProcessor{
         int operation;
         cv::Scalar lowColor;
         cv::Scalar highColor;
+
+        cv:: Mat filterFrame(const cv::Mat& frame);
+        cv::Mat applyMorphologicalTransformations(const cv::Mat& frame);
 };
 
 #endif // IMAGEPROCESSOR_H

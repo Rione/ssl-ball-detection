@@ -7,7 +7,7 @@ class VideoCapture{
     public:
         VideoCapture(int device=0, int fps=30, int bufferSize=4);
         bool setProperties();
-        bool read(cv::Mat &frame);
+        bool read(cv::Mat& frame);
         void release();
     
     private:
