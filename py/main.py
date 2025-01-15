@@ -4,27 +4,40 @@ from libcamera import Transform
 
 
 class ImageProcessor:
-    def __init__(self, d=5, sigmaColor=75, sigmaSpace=75, 
-                shape=cv2.MORPH_RECT, size=(3, 3), operation=cv2.MORPH_OPEN,
-                lowColor=np.array([1, 120, 120]), highColor=np.array([25, 255, 255])):
-        self._d = d
-        self._sigmaColor = sigmaColor
-        self._sigmaSpace = sigmaSpace
+    def __init__(self, minThreshold=np.array([1, 120, 120]), maxThreshold=np.array([25, 255, 255]), 
+                    ksize=(5, 5), sigmaX=0, shape=cv2.MORPH_RECT, size=(3, 3), operation=cv2.MORPH_OPEN):
+        self._minThreshold = minThreshold
+        self._maxThreshold = maxThreshold
+        self._ksize = ksize
+        self._sigmaX = sigmaX
         self._shape = shape
         self._size = size
         self._operation = operation
-        self._lowColor = lowColor
-        self._highColor = highColor
 
     def extractColors(self, frame):
         filtered = self._filterFrame(frame)
         hsv = cv2.cvtColor(filtered, cv2.COLOR_BGR2HSV)
-        mask = cv2.inRange(hsv, self._lowColor, self._highColor)
+        shadowMask = self._detectShadows(hsv)
+        hsv = self._equalizeHist(hsv)
+        mask = cv2.inRange(hsv, self._minThreshold, self._maxThreshold)
+        mask = cv2.bitwise_and(mask, mask, mask=shadowMask)
         mask = self._applyMorphologicalTransformations(mask)
         return mask
 
     def _filterFrame(self, frame):
-        return cv2.bilateralFilter(frame, self._d, self._sigmaColor, self._sigmaSpace)
+        return cv2.GaussianBlur(frame, self._ksize, self._sigmaX)
+
+    def _detectShadows(self, hsv):
+        v = hsv[:, :, 2]
+        shadow_mask = cv2.inRange(v, 0, 50)
+        shadow_mask = cv2.bitwise_not(shadow_mask)
+        return shadow_mask
+
+    def _equalizeHist(self, hsv):
+        h, s, v = cv2.split(hsv)
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        v = clahe.apply(v)
+        return cv2.merge((h, s, v))
 
     def _applyMorphologicalTransformations(self, mask):
         kernel = cv2.getStructuringElement(self._shape, self._size)
@@ -57,7 +70,7 @@ class BallDetector:
         area = cv2.contourArea(contour)
         if perimeter == 0:
             return False
-        circularity = 4 * np.pi * (area / (perimeter * perimeter))
+        circularity = (4 * np.pi * area) / (perimeter ** 2)
         return circularity > circularityThreshold
 
     def _focus(self, frame, center):
@@ -107,7 +120,7 @@ class Visualizer:
 
 
 class VideoCapture:
-    def __init__(self, device=0, fps=60, bufferSize=4):
+    def __init__(self, device=0, fps=30, bufferSize=4):
         self.cap = cv2.VideoCapture(device)
         self._fps = fps
         self._bufferSize = bufferSize
