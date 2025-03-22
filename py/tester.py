@@ -149,7 +149,7 @@ def main():
         
         ret, frame = videoCapture.read()
         if not ret:
-            print("Error: Failed to load the image")
+            print("Failed to load the image")
             break
         
         # ボール検出と描画
