@@ -1,11 +1,9 @@
 import cv2
 import numpy as np
-from libcamera import Transform
-from picamera2 import Picamera2
-
+import time
 
 class ImageProcessor:
-    def __init__(self, minThreshold=np.array([1, 120, 120]), maxThreshold=np.array([25, 255, 255]), 
+    def __init__(self, minThreshold=np.array([1, 120, 100]), maxThreshold=np.array([15, 255, 255]), 
                     ksize=(5, 5), sigmaX=0, shape=cv2.MORPH_RECT, size=(3, 3), operation=cv2.MORPH_OPEN):
         self._minThreshold = minThreshold
         self._maxThreshold = maxThreshold
@@ -30,9 +28,9 @@ class ImageProcessor:
 
     def _detectShadows(self, hsv):
         v = hsv[:, :, 2]
-        shadow_mask = cv2.inRange(v, 0, 50)
-        shadow_mask = cv2.bitwise_not(shadow_mask)
-        return shadow_mask
+        shadowMask = cv2.inRange(v, 0, 50)
+        shadowMask = cv2.bitwise_not(shadowMask)
+        return shadowMask
 
     def _equalizeHist(self, hsv):
         h, s, v = cv2.split(hsv)
@@ -66,7 +64,7 @@ class BallDetector:
                 return center, circleContour, vertices
         return None, None, None
 
-    def _isCircular(self, contour, circularityThreshold=0.4):
+    def _isCircular(self, contour, circularityThreshold=0.8):
         perimeter = cv2.arcLength(contour, True)
         area = cv2.contourArea(contour)
         if perimeter == 0:
@@ -121,44 +119,52 @@ class Visualizer:
 
 
 class VideoCapture:
-    def __init__(self):
-        self.camera = Picamera2()
-        self.camera.configure(self.camera.create_preview_configuration(
-            main={"size": (1640, 1232)},
-            #transform=Transform(hflip=True, vflip=True)
-        ))
-        self.camera.start()
-            
+    def __init__(self, device=0, fps=30, bufferSize=4):
+        self.cap = cv2.VideoCapture(device)
+        self._fps = fps
+        self._bufferSize = bufferSize
+        
+    def setProperties(self):
+        self.cap.set(cv2.CAP_PROP_FPS, self._fps)
+        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, self._bufferSize)
+    
     def read(self):
-        frame = self.camera.capture_array()
-        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-        return True, frame
+        return self.cap.read()
 
     def release(self):
-        self.camera.stop()
+        self.cap.release()
 
 
 def main():
     ballDetector = BallDetector()
     visualizer = Visualizer()
     videoCapture = VideoCapture()
+    videoCapture.setProperties()
+    
+    prev_time = time.time()  # 処理時間計測用の初期時間
 
     while True:
+        # フレーム処理開始時の時間を記録
+        start_time = time.time()
+        
         ret, frame = videoCapture.read()
         if not ret:
-            print("Error: Failed to load the image")
+            print("Failed to load the image")
             break
         
+        # ボール検出と描画
         center, circleContour, vertices = ballDetector.detect(frame)
-        print("Center of the ball:", center)
         visualizer.draw(frame, center, circleContour, vertices)
+
+        # 処理時間の計算（ミリ秒）
+        process_time = (time.time() - start_time) * 1000
+        print(f"処理時間: {process_time:.1f} ms")
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
     videoCapture.release()
     cv2.destroyAllWindows()
-
 
 if __name__ == "__main__":
     main()
