@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 from libcamera import Transform
+from picamera2 import Picamera2
 
 
 class ImageProcessor:
@@ -120,20 +121,21 @@ class Visualizer:
 
 
 class VideoCapture:
-    def __init__(self, device=0, fps=30, bufferSize=4):
-        self.cap = cv2.VideoCapture(device)
-        self._fps = fps
-        self._bufferSize = bufferSize
-        
-    def setProperties(self):
-        self.cap.set(cv2.CAP_PROP_FPS, self._fps)
-        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, self._bufferSize)
-    
+    def __init__(self):
+        self.camera = Picamera2()
+        self.camera.configure(self.camera.create_preview_configuration(
+            main={"size": (1640, 1232)},
+            #transform=Transform(hflip=True, vflip=True)
+        ))
+        self.camera.start()
+            
     def read(self):
-        return self.cap.read()
+        frame = self.camera.capture_array()
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        return True, frame
 
     def release(self):
-        self.cap.release()
+        self.camera.stop()
 
 
 def main():
@@ -141,7 +143,6 @@ def main():
     visualizer = Visualizer()
     videoCapture = VideoCapture()
 
-    videoCapture.setProperties()
     while True:
         ret, frame = videoCapture.read()
         if not ret:
