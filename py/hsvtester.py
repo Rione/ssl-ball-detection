@@ -110,9 +110,16 @@ def updateCamera(gui, camera):
     frame = camera.capture_array()
     frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
     
+    # フレームサイズを縮小
+    frame = cv2.resize(frame, (640, 360))
+    
     lowerBound, upperBound = gui.getBounds()
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     mask = cv2.inRange(hsv, np.array(lowerBound), np.array(upperBound))
+    
+    # ウィンドウ設定を追加
+    cv2.namedWindow("Masked", cv2.WINDOW_NORMAL)
+    cv2.resizeWindow("Masked", 640, 360)
     cv2.imshow("Masked", mask)
 
     gui.root.after(10, updateCamera, gui, camera)
@@ -126,7 +133,7 @@ def main():
     gui = GUI(root)
     camera = Picamera2()
     camera.configure(camera.create_preview_configuration(
-        main={"size": (1280, 720)}
+        main={"size": (640, 360)}  # カメラのキャプチャサイズも調整
     ))
     camera.start()
 
