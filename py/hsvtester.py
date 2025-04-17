@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import cv2
 import numpy as np
+from picamera2 import Picamera2
 
 MIN = 0
 MAX = 255
@@ -99,21 +100,22 @@ class GUI:
         self.running = False
 
 
-def updateCamera(gui, cap):
+def updateCamera(gui, camera):
     if not gui.running:
-        cap.release()
+        camera.stop()
         cv2.destroyAllWindows()
         gui.root.quit()
         return
 
-    ret, frame = cap.read()
-    if ret:
-        lowerBound, upperBound = gui.getBounds()
-        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        mask = cv2.inRange(hsv, np.array(lowerBound), np.array(upperBound))
-        cv2.imshow("Masked", mask)
+    frame = camera.capture_array()
+    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+    
+    lowerBound, upperBound = gui.getBounds()
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    mask = cv2.inRange(hsv, np.array(lowerBound), np.array(upperBound))
+    cv2.imshow("Masked", mask)
 
-    gui.root.after(10, updateCamera, gui, cap) 
+    gui.root.after(10, updateCamera, gui, camera)
 
 
 def main():
@@ -122,9 +124,13 @@ def main():
     root.geometry("500x400")
 
     gui = GUI(root)
-    cap = cv2.VideoCapture(0)
+    camera = Picamera2()
+    camera.configure(camera.create_preview_configuration(
+        main={"size": (1280, 720)}
+    ))
+    camera.start()
 
-    updateCamera(gui, cap)
+    updateCamera(gui, camera)
 
     root.mainloop()
 
