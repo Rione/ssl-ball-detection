@@ -111,34 +111,37 @@ def updateCamera(gui, camera):
     frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
     
     # フレームサイズを縮小
-    frame = cv2.resize(frame, (640, 360))
+    frame = cv2.resize(frame, (320, 240))  # ラズパイ向けに解像度を下げる
     
     lowerBound, upperBound = gui.getBounds()
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     mask = cv2.inRange(hsv, np.array(lowerBound), np.array(upperBound))
     
-    # ウィンドウ設定を追加
+    # オリジナル映像とマスク映像を表示
+    cv2.namedWindow("Original", cv2.WINDOW_NORMAL)
     cv2.namedWindow("Masked", cv2.WINDOW_NORMAL)
-    cv2.resizeWindow("Masked", 640, 360)
+    cv2.resizeWindow("Original", 320, 240)
+    cv2.resizeWindow("Masked", 320, 240)
+    cv2.imshow("Original", frame)
     cv2.imshow("Masked", mask)
+    cv2.waitKey(1)  # 1ミリ秒待機
 
-    gui.root.after(10, updateCamera, gui, camera)
+    gui.root.after(30, updateCamera, gui, camera)  # フレームレートを30FPSに制限
 
 
 def main():
     root = tk.Tk()
     root.title("HSV Controller")
-    root.geometry("500x400")
+    root.geometry("400x350")  # ウィンドウサイズを調整
 
     gui = GUI(root)
     camera = Picamera2()
     camera.configure(camera.create_preview_configuration(
-        main={"size": (640, 360)}  # カメラのキャプチャサイズも調整
+        main={"size": (320, 240)}  # カメラのキャプチャサイズを調整
     ))
     camera.start()
 
     updateCamera(gui, camera)
-
     root.mainloop()
 
 
