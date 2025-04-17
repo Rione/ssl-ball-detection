@@ -96,7 +96,15 @@ class GUI:
         ]
         return lower, upper
 
+    def print_hsv_values(self):
+        lower, upper = self.getBounds()
+        print("\nHSV範囲:")
+        print(f"下限値: H={lower[0]}, S={lower[1]}, V={lower[2]}")
+        print(f"上限値: H={upper[0]}, S={upper[1]}, V={upper[2]}")
+        print(f"\nnp.array([{lower[0]}, {lower[1]}, {lower[2]}]), np.array([{upper[0]}, {upper[1]}, {upper[2]}])")
+
     def quit(self):
+        self.print_hsv_values()  # 終了時にHSV値を出力
         self.running = False
 
 
