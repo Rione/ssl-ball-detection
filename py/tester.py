@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
 import time
+import base64
+import json
 
 class ImageProcessor:
     def __init__(self, minThreshold=np.array([1, 120, 100]), maxThreshold=np.array([15, 255, 255]), 
@@ -135,16 +137,37 @@ class VideoCapture:
         self.cap.release()
 
 
+class Encoder:
+    @staticmethod
+    def encode_data(frame, center=None):
+        # 画像データをbase64エンコード
+        frame_bytes = base64.b64encode(frame.tobytes()).decode('utf-8')
+        
+        # 座標データをbase64エンコード
+        if center:
+            x = base64.b64encode(str(center[0]).encode()).decode('utf-8')
+            y = base64.b64encode(str(center[1]).encode()).decode('utf-8')
+        else:
+            x = base64.b64encode(b"None").decode('utf-8')
+            y = base64.b64encode(b"None").decode('utf-8')
+        
+        # JSON形式でデータを返す
+        return json.dumps({
+            'frame': frame_bytes,
+            'x': x,
+            'y': y
+        })
+
+
 def main():
     ballDetector = BallDetector()
     visualizer = Visualizer()
     videoCapture = VideoCapture()
     videoCapture.setProperties()
     
-    prev_time = time.time()  # 処理時間計測用の初期時間
+    prev_time = time.time()
 
     while True:
-        # フレーム処理開始時の時間を記録
         start_time = time.time()
         
         ret, frame = videoCapture.read()
@@ -152,11 +175,15 @@ def main():
             print("Failed to load the image")
             break
         
-        # ボール検出と描画
         center, circleContour, vertices = ballDetector.detect(frame)
         visualizer.draw(frame, center, circleContour, vertices)
+        
+        encoded_data = Encoder.encode_data(frame, center)
+        encoded_json = json.loads(encoded_data)
+        print("X coordinate:", encoded_json['x'])
+        print("Y coordinate:", encoded_json['y'])
+        print("Frame length:", len(encoded_json['frame']))
 
-        # 処理時間の計算（ミリ秒）
         process_time = (time.time() - start_time) * 1000
         print(f"処理時間: {process_time:.1f} ms")
 

@@ -1,7 +1,9 @@
 import cv2
 import numpy as np
-from libcamera import Transform
 from picamera2 import Picamera2
+from libcamera2 import Transform
+import base64
+import json
 
 
 class ImageProcessor:
@@ -19,9 +21,9 @@ class ImageProcessor:
         filtered = self._filterFrame(frame)
         hsv = cv2.cvtColor(filtered, cv2.COLOR_BGR2HSV)
         shadowMask = self._detectShadows(hsv)
-        hsv = self._equalizeHist(hsv)
+        #hsv = self._equalizeHist(hsv)
         mask = cv2.inRange(hsv, self._minThreshold, self._maxThreshold)
-        mask = cv2.bitwise_and(mask, mask, mask=shadowMask)
+        #mask = cv2.bitwise_and(mask, mask, mask=shadowMask)
         mask = self._applyMorphologicalTransformations(mask)
         return mask
 
@@ -124,7 +126,7 @@ class VideoCapture:
     def __init__(self):
         self.camera = Picamera2()
         self.camera.configure(self.camera.create_preview_configuration(
-            main={"size": (1640, 1232)},
+            main={"size": (1280, 720)},
             #transform=Transform(hflip=True, vflip=True)
         ))
         self.camera.start()
@@ -136,6 +138,27 @@ class VideoCapture:
 
     def release(self):
         self.camera.stop()
+
+class Encoder:
+    @staticmethod
+    def encode_data(frame, center=None):
+        # 画像データをbase64エンコード
+        frame_bytes = base64.b64encode(frame.tobytes()).decode('utf-8')
+        
+        # 座標データをbase64エンコード
+        if center:
+            x = base64.b64encode(str(center[0]).encode()).decode('utf-8')
+            y = base64.b64encode(str(center[1]).encode()).decode('utf-8')
+        else:
+            x = base64.b64encode(b"None").decode('utf-8')
+            y = base64.b64encode(b"None").decode('utf-8')
+        
+        # JSON形式でデータを返す
+        return json.dumps({
+            'frame': frame_bytes,
+            'x': x,
+            'y': y
+        })
 
 
 def main():
@@ -151,7 +174,13 @@ def main():
         
         center, circleContour, vertices = ballDetector.detect(frame)
         print("Center of the ball:", center)
-        visualizer.draw(frame, center, circleContour, vertices)
+        
+        # フレームと中心座標を一緒にエンコード
+        encoded_data = Encoder.encode_data(frame, center)
+        encoded_json = json.loads(encoded_data)
+        print("X coordinate:", encoded_json['x'])
+        print("Y coordinate:", encoded_json['y'])
+        print("Frame length:", len(encoded_json['frame']))
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
