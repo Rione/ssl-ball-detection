@@ -1,29 +1,66 @@
 import cv2
 import numpy as np
-from picamera2 import Picamera2
-from libcamera2 import Transform
 import base64
 import json
+import socket
+import os
 
+
+def loadThresholds(file_path="thresholds.txt"):
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    paths_to_try = [
+        file_path,  
+        os.path.join(base_dir, file_path),  
+    ]
+    
+    thresholds = {}
+    
+    for path in paths_to_try:
+        if os.path.exists(path):
+            print(f"reading the file: {path}")
+            with open(path, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith('//'):
+                        continue
+                        
+                    key, value = [part.strip() for part in line.split(':', 1)]
+                    
+                    if key in ["minThreshold", "maxThreshold"]:
+                        # 配列値を処理
+                        values = [int(v.strip()) for v in value.split(',')]
+                        thresholds[key] = np.array(values)
+                    else:
+                        # 数値を処理
+                        thresholds[key] = float(value)
+            
+            print("reading completed")
+            break
+    else:
+        print(f"Warning: configure file {file_path} not found.")
+    
+    return thresholds
 
 class ImageProcessor:
-    def __init__(self, minThreshold=np.array([1, 120, 120]), maxThreshold=np.array([25, 255, 255]), 
-                    ksize=(5, 5), sigmaX=0, shape=cv2.MORPH_RECT, size=(3, 3), operation=cv2.MORPH_OPEN):
-        self._minThreshold = minThreshold
-        self._maxThreshold = maxThreshold
-        self._ksize = ksize
-        self._sigmaX = sigmaX
-        self._shape = shape
-        self._size = size
-        self._operation = operation
+    def __init__(self, settings=None):
+        if settings is None:
+            settings = {}
+        
+        self._minThreshold = settings.get("minThreshold", np.array([1, 120, 100]))
+        self._maxThreshold = settings.get("maxThreshold", np.array([15, 255, 255]))
+        self._ksize = (5, 5)
+        self._sigmaX = 0
+        self._shape = cv2.MORPH_RECT
+        self._size = (3, 3)
+        self._operation = cv2.MORPH_OPEN
 
     def extractColors(self, frame):
         filtered = self._filterFrame(frame)
         hsv = cv2.cvtColor(filtered, cv2.COLOR_BGR2HSV)
         shadowMask = self._detectShadows(hsv)
-        #hsv = self._equalizeHist(hsv)
+        hsv = self._equalizeHist(hsv)
         mask = cv2.inRange(hsv, self._minThreshold, self._maxThreshold)
-        #mask = cv2.bitwise_and(mask, mask, mask=shadowMask)
+        mask = cv2.bitwise_and(mask, mask, mask=shadowMask)
         mask = self._applyMorphologicalTransformations(mask)
         return mask
 
@@ -32,9 +69,9 @@ class ImageProcessor:
 
     def _detectShadows(self, hsv):
         v = hsv[:, :, 2]
-        shadow_mask = cv2.inRange(v, 0, 50)
-        shadow_mask = cv2.bitwise_not(shadow_mask)
-        return shadow_mask
+        shadowMask = cv2.inRange(v, 0, 50)
+        shadowMask = cv2.bitwise_not(shadowMask)
+        return shadowMask
 
     def _equalizeHist(self, hsv):
         h, s, v = cv2.split(hsv)
@@ -48,9 +85,13 @@ class ImageProcessor:
 
 
 class BallDetector:
-    def __init__(self, radius=150):
-        self.imageProcessor = ImageProcessor()
-        self._radius = radius
+    def __init__(self, settings=None):
+        if settings is None:
+            settings = {}
+            
+        self.imageProcessor = ImageProcessor(settings)
+        self._radius = settings.get("ballDetectRadius", 150)
+        self._circularityThreshold = settings.get("circularityThreshold", 0.2)
         self._previousCenter = None
 
     def detect(self, frame):
@@ -68,7 +109,10 @@ class BallDetector:
                 return center, circleContour, vertices
         return None, None, None
 
-    def _isCircular(self, contour, circularityThreshold=0.4):
+    def _isCircular(self, contour, circularityThreshold=None):
+        if circularityThreshold is None:
+            circularityThreshold = self._circularityThreshold
+            
         perimeter = cv2.arcLength(contour, True)
         area = cv2.contourArea(contour)
         if perimeter == 0:
@@ -84,6 +128,8 @@ class BallDetector:
             xMax, yMax = min(width, x + self._radius), min(height, y + self._radius)
         else:
             xMin, yMin, xMax, yMax = 0, 0, width, height
+
+        xMin, yMin, xMax, yMax = int(xMin), int(yMin), int(xMax), int(yMax)
 
         roi = frame[yMin:yMax, xMin:xMax]
         offset = (xMin, yMin)
@@ -123,70 +169,92 @@ class Visualizer:
 
 
 class VideoCapture:
-    def __init__(self):
-        self.camera = Picamera2()
-        self.camera.configure(self.camera.create_preview_configuration(
-            main={"size": (1280, 720)},
-            #transform=Transform(hflip=True, vflip=True)
-        ))
-        self.camera.start()
+    def __init__(self, device=0, settings=None):
+        if settings is None:
+            settings = {}
             
+        self.cap = cv2.VideoCapture(device)
+        self._fps = settings.get("fps", 30)
+        self._bufferSize = settings.get("bufferSize", 4)
+        
+    def setProperties(self):
+        self.cap.set(cv2.CAP_PROP_FPS, self._fps)
+        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, self._bufferSize)
+    
     def read(self):
-        frame = self.camera.capture_array()
-        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-        return True, frame
+        return self.cap.read()
 
     def release(self):
-        self.camera.stop()
+        self.cap.release()
 
 class Encoder:
     @staticmethod
-    def encode_data(frame, center=None):
-        # 画像データをbase64エンコード
+    def encodeData(frame, center=None):
+        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
+        result, frame = cv2.imencode('.jpg', frame, encode_param)
+        if not result:
+            raise ValueError("Failed to encode image")
+
         frame_bytes = base64.b64encode(frame.tobytes()).decode('utf-8')
         
-        # 座標データをbase64エンコード
         if center:
-            x = base64.b64encode(str(center[0]).encode()).decode('utf-8')
-            y = base64.b64encode(str(center[1]).encode()).decode('utf-8')
+            x = center[0]
+            y = center[1]
         else:
-            x = base64.b64encode(b"None").decode('utf-8')
-            y = base64.b64encode(b"None").decode('utf-8')
+            x = None
+            y = None
         
-        # JSON形式でデータを返す
         return json.dumps({
             'frame': frame_bytes,
             'x': x,
             'y': y
-        })
+        })    
+class UDPClient:
+    def __init__(self, host='172.16.0.14', port=31133):
+        self.host = host
+        self.port = port
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    
+    def send(self, data):
+        try:
+            self.socket.sendto(str(data).encode(), (self.host, self.port))
+            return True
+        except Exception as e:
+            print(f"error: {e}")
+            return False
+    
+    def close(self):
+        if self.socket:
+            self.socket.close()
 
 
 def main():
-    ballDetector = BallDetector()
+    settings = loadThresholds()
+    ballDetector = BallDetector(settings)  
     visualizer = Visualizer()
-    videoCapture = VideoCapture()
-
-    while True:
-        ret, frame = videoCapture.read()
-        if not ret:
-            print("Error: Failed to load the image")
-            break
-        
-        center, circleContour, vertices = ballDetector.detect(frame)
-        print("Center of the ball:", center)
-        
-        # フレームと中心座標を一緒にエンコード
-        encoded_data = Encoder.encode_data(frame, center)
-        encoded_json = json.loads(encoded_data)
-        print("X coordinate:", encoded_json['x'])
-        print("Y coordinate:", encoded_json['y'])
-        print("Frame length:", len(encoded_json['frame']))
-
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-
-    videoCapture.release()
-    cv2.destroyAllWindows()
+    videoCapture = VideoCapture(0, settings)
+    udpClient = UDPClient() 
+    
+    try:
+        while True:
+            ret, frame = videoCapture.read()
+            if not ret:
+                print("Error: Failed to load the image")
+                break
+            
+            center, circleContour, vertices = ballDetector.detect(frame)
+            print("Center of the ball:", center)
+            encodedData = Encoder.encodeData(frame, center)
+            encodedJson = json.loads(encodedData)
+            udpClient.send(encodedJson)                        
+            #visualizer.draw(frame, center, circleContour, vertices)
+            
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+    finally:
+        videoCapture.release()
+        udpClient.close()  
+        cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":
