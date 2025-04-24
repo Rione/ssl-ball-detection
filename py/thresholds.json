@@ -1,0 +1,6 @@
+{
+  "minThreshold": [1, 120, 100],
+  "maxThreshold": [15, 255, 255],
+  "ballDetectRadius": 150,
+  "circularityThreshold": 0.2
+}
