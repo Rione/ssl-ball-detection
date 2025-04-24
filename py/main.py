@@ -5,6 +5,7 @@ import base64
 import json
 import socket
 import os
+from picamera2 import Picamera2
 
 def loadSettingsFromJson(file_path="thresholds.json"):
     """Loads settings from a JSON file."""
@@ -200,7 +201,7 @@ class Visualizer:
     def __init__(self, radius=5, windowName="Frame"):
         self._radius = radius # Radius for drawing the center point
         self._windowName = windowName
-        cv2.namedWindow(self._windowName, cv2.WINDOW_NORMAL) # Make window resizable
+        #cv2.namedWindow(self._windowName, cv2.WINDOW_NORMAL) # Make window resizable
 
     def draw(self, frame, center, circleContour, vertices):
         # Draw ROI rectangle (optional)
@@ -215,10 +216,12 @@ class Visualizer:
         if center is not None:
             cv2.circle(frame, center, self._radius, (0, 255, 0), -1) # Green center filled
 
-        cv2.imshow(self._windowName, frame)
+        #cv2.imshow(self._windowName, frame)
+        return frame
 
     def destroy(self):
-        cv2.destroyWindow(self._windowName)
+        pass
+        #cv2.destroyWindow(self._windowName)
 
 
 class VideoCapture:
@@ -226,9 +229,12 @@ class VideoCapture:
         if settings is None:
             settings = {}
 
-        self.cap = cv2.VideoCapture(device)
-        if not self.cap.isOpened():
-            raise IOError(f"Cannot open video capture device {device}")
+        self.cap = Picamera2()
+        config = self.cap.create_preview_configuration({'format': 'RGB888'})
+        self.cap.configure(config)
+        self.cap.start()
+        #if not self.cap.isOpened():
+        #    raise IOError(f"Cannot open video capture device {device}")
 
         # Get settings or use defaults
         self._fps = int(settings.get("fps", 30))
@@ -240,24 +246,26 @@ class VideoCapture:
         """Applies configured properties to the video capture device."""
         print(f"Attempting to set camera properties: Resolution={self._width}x{self._height}, FPS={self._fps}, BufferSize={self._bufferSize}")
         # Setting properties might not work on all cameras/backends
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self._width)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self._height)
-        self.cap.set(cv2.CAP_PROP_FPS, self._fps)
-        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, self._bufferSize)
+        #self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self._width)
+        #self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self._height)
+        #self.cap.set(cv2.CAP_PROP_FPS, self._fps)
+        #self.cap.set(cv2.CAP_PROP_BUFFERSIZE, self._bufferSize)
 
         # Verify settings
-        actual_width = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
-        actual_height = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
-        actual_fps = self.cap.get(cv2.CAP_PROP_FPS)
-        print(f"Actual camera properties: Resolution={actual_width}x{actual_height}, FPS={actual_fps}")
-
+        #actual_width = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+        #actual_height = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+        #actual_fps = self.cap.get(cv2.CAP_PROP_FPS)
+        #print(f"Actual camera properties: Resolution={actual_width}x{actual_height}, FPS={actual_fps}")
+        pass
 
     def read(self):
-        return self.cap.read()
+        #print("aa")
+        return (True, self.cap.capture_array())
 
     def release(self):
-        if self.cap.isOpened():
-            self.cap.release()
+        #if self.cap.isOpened():
+        #    self.cap.release()
+            self.cap.close()
             print("Video capture released.")
 
 class Encoder:
@@ -341,7 +349,7 @@ def main():
         visualizer = Visualizer()
         videoCapture = VideoCapture(0, settings) # Pass settings for FPS, buffer, resolution
         videoCapture.setProperties() # Apply camera settings
-        udpClient = UDPClient(host=settings.get('udpHost', '127.0.0.1'), # Allow configuring UDP target via JSON
+        udpClient = UDPClient(host=settings.get('udpHost', '172.16.0.14'), # Allow configuring UDP target via JSON
                               port=int(settings.get('udpPort', 31133)))
 
         output_width = int(settings.get("outputFrameWidth", 160)) # Configurable output size
@@ -357,6 +365,8 @@ def main():
 
             # Detect the ball
             center, circleContour, vertices = ballDetector.detect(frame.copy()) # Work on a copy for detection
+
+            frame = visualizer.draw(frame, center, circleContour, vertices)
 
             # Prepare frame for encoding (resize)
             frame_resized = cv2.resize(frame, (output_width, output_height), interpolation=cv2.INTER_AREA)
