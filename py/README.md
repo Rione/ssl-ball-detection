@@ -6,7 +6,13 @@
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-## 2. run python code with `uv`
+## 2. Sync Python library dependencies
+
+```shell
+uv sync
+```
+
+## 3. run python code with `uv`
 
 ```shell
 uv run tester.py
