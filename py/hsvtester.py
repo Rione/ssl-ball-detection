@@ -50,8 +50,15 @@ class GUI:
                 frame,
                 textvariable=self.hsvValues[key],
                 validate="focusout",
-                validatecommand=(self.root.register(lambda value, k=key: self.validateEntry(value, k)), "%P"),
-                invalidcommand=(self.root.register(lambda k=key: self.restorePreviousValue(k)),),
+                validatecommand=(
+                    self.root.register(
+                        lambda value, k=key: self.validateEntry(value, k)
+                    ),
+                    "%P",
+                ),
+                invalidcommand=(
+                    self.root.register(lambda k=key: self.restorePreviousValue(k)),
+                ),
                 width=5,
             )
             entry.pack(side="right")
@@ -101,7 +108,9 @@ class GUI:
         print("\nHSV範囲:")
         print(f"下限値: H={lower[0]}, S={lower[1]}, V={lower[2]}")
         print(f"上限値: H={upper[0]}, S={upper[1]}, V={upper[2]}")
-        print(f"\nnp.array([{lower[0]}, {lower[1]}, {lower[2]}]), np.array([{upper[0]}, {upper[1]}, {upper[2]}])")
+        print(
+            f"\nnp.array([{lower[0]}, {lower[1]}, {lower[2]}]), np.array([{upper[0]}, {upper[1]}, {upper[2]}])"
+        )
 
     def quit(self):
         self.print_hsv_values()  # 終了時にHSV値を出力
@@ -117,14 +126,14 @@ def updateCamera(gui, camera):
 
     frame = camera.capture_array()
     frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-    
+
     # フレームサイズを縮小
     frame = cv2.resize(frame, (320, 240))  # ラズパイ向けに解像度を下げる
-    
+
     lowerBound, upperBound = gui.getBounds()
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     mask = cv2.inRange(hsv, np.array(lowerBound), np.array(upperBound))
-    
+
     # オリジナル映像とマスク映像を表示
     cv2.namedWindow("Original", cv2.WINDOW_NORMAL)
     cv2.namedWindow("Masked", cv2.WINDOW_NORMAL)
@@ -144,9 +153,11 @@ def main():
 
     gui = GUI(root)
     camera = Picamera2()
-    camera.configure(camera.create_preview_configuration(
-        main={"size": (320, 240)}  # カメラのキャプチャサイズを調整
-    ))
+    camera.configure(
+        camera.create_preview_configuration(
+            main={"size": (320, 240)}  # カメラのキャプチャサイズを調整
+        )
+    )
     camera.start()
 
     updateCamera(gui, camera)

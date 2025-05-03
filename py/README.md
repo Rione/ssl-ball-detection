@@ -17,3 +17,27 @@ uv sync
 ```shell
 uv run tester.py
 ```
+
+## Format
+
+```shell
+uv run ruff format <filename>
+```
+
+or format all files with,
+
+```shell
+uv run ruff format .
+```
+
+## Code Check
+
+```shell
+uv run ruff check <filename>
+```
+
+or check all files with,
+
+```shell
+uv run ruff check .
+```

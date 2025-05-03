@@ -4,9 +4,18 @@ import time
 import base64
 import json
 
+
 class ImageProcessor:
-    def __init__(self, minThreshold=np.array([1, 120, 100]), maxThreshold=np.array([15, 255, 255]), 
-                    ksize=(5, 5), sigmaX=0, shape=cv2.MORPH_RECT, size=(3, 3), operation=cv2.MORPH_OPEN):
+    def __init__(
+        self,
+        minThreshold=np.array([1, 120, 100]),
+        maxThreshold=np.array([15, 255, 255]),
+        ksize=(5, 5),
+        sigmaX=0,
+        shape=cv2.MORPH_RECT,
+        size=(3, 3),
+        operation=cv2.MORPH_OPEN,
+    ):
         self._minThreshold = minThreshold
         self._maxThreshold = maxThreshold
         self._ksize = ksize
@@ -55,7 +64,7 @@ class BallDetector:
         roi, offset, vertices = self._focus(frame, self._previousCenter)
         mask = self.imageProcessor.extractColors(roi)
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        
+
         if len(contours) > 0:
             maxContour = max(contours, key=cv2.contourArea)
             if self._isCircular(maxContour):
@@ -71,7 +80,7 @@ class BallDetector:
         area = cv2.contourArea(contour)
         if perimeter == 0:
             return False
-        circularity = (4 * np.pi * area) / (perimeter ** 2)
+        circularity = (4 * np.pi * area) / (perimeter**2)
         return circularity > circularityThreshold
 
     def _focus(self, frame, center):
@@ -90,11 +99,18 @@ class BallDetector:
 
     def _createCircleContour(self, x, y, radius, offset):
         angles = np.linspace(0, 2 * np.pi, 36, endpoint=False)
-        circleContour = np.column_stack((
-            int(x) + radius * np.cos(angles) + offset[0],
-            int(y) + radius * np.sin(angles) + offset[1]
-        )).astype(np.int32).reshape(-1, 1, 2)
+        circleContour = (
+            np.column_stack(
+                (
+                    int(x) + radius * np.cos(angles) + offset[0],
+                    int(y) + radius * np.sin(angles) + offset[1],
+                )
+            )
+            .astype(np.int32)
+            .reshape(-1, 1, 2)
+        )
         return circleContour
+
 
 class Visualizer:
     def __init__(self, radius=5, windowName="Frame"):
@@ -109,7 +125,13 @@ class Visualizer:
 
     def _drawRectangle(self, frame, vertices):
         if vertices:
-            cv2.rectangle(frame, (vertices[0], vertices[1]), (vertices[2], vertices[3]), (0, 0, 255), 1)
+            cv2.rectangle(
+                frame,
+                (vertices[0], vertices[1]),
+                (vertices[2], vertices[3]),
+                (0, 0, 255),
+                1,
+            )
 
     def _drawCircle(self, frame, circle):
         if circle is not None:
@@ -125,11 +147,11 @@ class VideoCapture:
         self.cap = cv2.VideoCapture(device)
         self._fps = fps
         self._bufferSize = bufferSize
-        
+
     def setProperties(self):
         self.cap.set(cv2.CAP_PROP_FPS, self._fps)
         self.cap.set(cv2.CAP_PROP_BUFFERSIZE, self._bufferSize)
-    
+
     def read(self):
         return self.cap.read()
 
@@ -141,22 +163,18 @@ class Encoder:
     @staticmethod
     def encode_data(frame, center=None):
         # 画像データをbase64エンコード
-        frame_bytes = base64.b64encode(frame.tobytes()).decode('utf-8')
-        
+        frame_bytes = base64.b64encode(frame.tobytes()).decode("utf-8")
+
         # 座標データをbase64エンコード
         if center:
-            x = base64.b64encode(str(center[0]).encode()).decode('utf-8')
-            y = base64.b64encode(str(center[1]).encode()).decode('utf-8')
+            x = base64.b64encode(str(center[0]).encode()).decode("utf-8")
+            y = base64.b64encode(str(center[1]).encode()).decode("utf-8")
         else:
-            x = base64.b64encode(b"None").decode('utf-8')
-            y = base64.b64encode(b"None").decode('utf-8')
-        
+            x = base64.b64encode(b"None").decode("utf-8")
+            y = base64.b64encode(b"None").decode("utf-8")
+
         # JSON形式でデータを返す
-        return json.dumps({
-            'frame': frame_bytes,
-            'x': x,
-            'y': y
-        })
+        return json.dumps({"frame": frame_bytes, "x": x, "y": y})
 
 
 def main():
@@ -164,34 +182,35 @@ def main():
     visualizer = Visualizer()
     videoCapture = VideoCapture()
     videoCapture.setProperties()
-    
+
     prev_time = time.time()
 
     while True:
         start_time = time.time()
-        
+
         ret, frame = videoCapture.read()
         if not ret:
             print("Failed to load the image")
             break
-        
+
         center, circleContour, vertices = ballDetector.detect(frame)
         visualizer.draw(frame, center, circleContour, vertices)
-        
+
         encoded_data = Encoder.encode_data(frame, center)
         encoded_json = json.loads(encoded_data)
-        print("X coordinate:", encoded_json['x'])
-        print("Y coordinate:", encoded_json['y'])
-        print("Frame length:", len(encoded_json['frame']))
+        print("X coordinate:", encoded_json["x"])
+        print("Y coordinate:", encoded_json["y"])
+        print("Frame length:", len(encoded_json["frame"]))
 
         process_time = (time.time() - start_time) * 1000
         print(f"処理時間: {process_time:.1f} ms")
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 
     videoCapture.release()
     cv2.destroyAllWindows()
+
 
 if __name__ == "__main__":
     main()
