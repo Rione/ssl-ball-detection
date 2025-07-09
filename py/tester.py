@@ -80,8 +80,10 @@ class BallDetector:
                 center = (int(x) + offset[0], int(y) + offset[1])
                 circleContour = self._createCircleContour(x, y, radius, offset)
                 self._previousCenter = center
-                return center, circleContour, vertices
-        return None, None, None
+                diameter = int(radius * 2)
+                distance = 320 * 70 / diameter  # Assuming a fixed distance calculation
+                return center, circleContour, vertices, distance
+        return None, None, None, None
 
     def _isCircular(self, contour, circularityThreshold=0.8):
         perimeter = cv2.arcLength(contour, True)
@@ -169,7 +171,7 @@ class VideoCapture:
 
 class Encoder:
     @staticmethod
-    def encode_data(frame, center=None):
+    def encode_data(frame, center=None, distance=None):
         # 画像データをbase64エンコード
         frame_bytes = base64.b64encode(frame.tobytes()).decode("utf-8")
 
@@ -177,12 +179,14 @@ class Encoder:
         if center:
             x = base64.b64encode(str(center[0]).encode()).decode("utf-8")
             y = base64.b64encode(str(center[1]).encode()).decode("utf-8")
+            d = base64.b64encode(str(distance).encode()).decode("utf-8")
         else:
             x = base64.b64encode(b"None").decode("utf-8")
             y = base64.b64encode(b"None").decode("utf-8")
+            d = base64.b64encode(b"None").decode("utf-8")
 
         # JSON形式でデータを返す
-        return json.dumps({"frame": frame_bytes, "x": x, "y": y})
+        return json.dumps({"frame": frame_bytes, "x": x, "y": y, "distance": d})
 
 
 def main():
@@ -210,10 +214,10 @@ def main():
             print("Failed to load the image")
             break
 
-        center, circleContour, vertices = ballDetector.detect(frame)
+        center, circleContour, vertices, distance = ballDetector.detect(frame)
         visualizer.draw(frame, center, circleContour, vertices)
 
-        encoded_data = Encoder.encode_data(frame, center)
+        encoded_data = Encoder.encode_data(frame, center, distance)
         encoded_json = json.loads(encoded_data)
 
         # ボールの座標をマイコンに送るところ<start>
