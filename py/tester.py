@@ -7,12 +7,6 @@ import numpy as np
 import serial
 from robot_communicator import RobotCommunicator
 
-# Constants
-gain_x = 0.5
-gain_y = 0.5
-serial_port = "/dev/serial0"
-
-
 class ImageProcessor:
     def __init__(
         self,
@@ -178,15 +172,13 @@ class Encoder:
         # 座標データをbase64エンコード
         if center:
             x = base64.b64encode(str(center[0]).encode()).decode("utf-8")
-            y = base64.b64encode(str(center[1]).encode()).decode("utf-8")
-            d = base64.b64encode(str(distance).encode()).decode("utf-8")
+            y = base64.b64encode(str(distance).encode()).decode("utf-8")
         else:
             x = base64.b64encode(b"None").decode("utf-8")
             y = base64.b64encode(b"None").decode("utf-8")
-            d = base64.b64encode(b"None").decode("utf-8")
 
         # JSON形式でデータを返す
-        return json.dumps({"frame": frame_bytes, "x": x, "y": y, "distance": d})
+        return json.dumps({"frame": frame_bytes, "x": x, "y": y})
 
 
 def main():
@@ -194,17 +186,7 @@ def main():
     visualizer = Visualizer()
     videoCapture = VideoCapture()
 
-    try:
-        robotCommunicator = RobotCommunicator(port=serial_port, baudrate=115200)
-    except serial.SerialException as e:
-        print(f"❌ Serial port error: {e}")
-        robotCommunicator = RobotCommunicator(
-            port=None, baudrate=115200
-        )  # 無理やりNoneで初期化
-
     videoCapture.setProperties()
-
-    prev_time = time.time()
 
     while True:
         start_time = time.time()
@@ -220,18 +202,6 @@ def main():
         encoded_data = Encoder.encode_data(frame, center, distance)
         encoded_json = json.loads(encoded_data)
 
-        # ボールの座標をマイコンに送るところ<start>
-        if center is None:
-            center = (-127, -127) # ボールが見つからない場合のデフォルト値
-        x_pos_i8 = np.clip(center[0] * gain_x, -127, 127)
-        y_pos_i8 = np.clip(center[1] * gain_y, -127, 127)
-        x_pos_u8 = int(x_pos_i8) % 256
-        y_pos_u8 = int(y_pos_i8) % 256
-
-        if robotCommunicator.receive_data():  # データを受信できたら
-            robotCommunicator.send_data(x_pos_u8, y_pos_u8)
-        # ボールの座標をマイコンに送るところ<end>
-
         print("X coordinate:", encoded_json["x"])
         print("Y coordinate:", encoded_json["y"])
         print("Frame length:", len(encoded_json["frame"]))
@@ -244,7 +214,6 @@ def main():
 
     videoCapture.release()
     cv2.destroyAllWindows()
-    robotCommunicator.close()
 
 
 if __name__ == "__main__":
