@@ -148,7 +148,7 @@ class BallDetector:
         if roi.size == 0:  # Check if ROI is valid
             print("Warning: ROI is empty.")
             self._previousCenter = None  # Reset focus if ROI becomes invalid
-            return None, None, None
+            return None, None, None, None
 
         mask = self.imageProcessor.extractColors(roi)
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -160,7 +160,7 @@ class BallDetector:
         if not valid_contours:
             # Optional: Gradually expand ROI if nothing found?
             # self._previousCenter = None # Or keep last known position?
-            return None, None, vertices  # Return vertices even if no ball found
+            return None, None, vertices, None  # Return vertices even if no ball found
 
         bestContour = max(valid_contours, key=cv2.contourArea)
 
@@ -173,12 +173,14 @@ class BallDetector:
                 x + offset[0], y + offset[1], radius
             )
             self._previousCenter = center
+            diameter = int(radius * 2)
+            distance = 320 * 70 / diameter
             # Return the absolute center, the absolute circle contour, and the ROI vertices
-            return center, circleContour, vertices
+            return center, circleContour, vertices, distance
 
         # If the largest contour isn't circular enough
         self._previousCenter = None  # Reset focus if no suitable ball found
-        return None, None, vertices  # Return vertices even if no ball found
+        return None, None, vertices, None  # Return vertices even if no ball found
 
     def _isCircular(self, contour):
         perimeter = cv2.arcLength(contour, True)
@@ -326,7 +328,7 @@ class VideoCapture:
 
 class Encoder:
     @staticmethod
-    def encodeData(frame, center=None, quality=90):
+    def encodeData(frame, center=None, distance=None, quality=90):
         """Encodes frame to JPEG bytes, Base64, and bundles with center coords in JSON."""
         # Ensure frame is not empty
         if frame is None or frame.size == 0:
@@ -346,7 +348,7 @@ class Encoder:
 
         # Prepare coordinates
         x_coord = center[0] if center is not None else None
-        y_coord = center[1] if center is not None else None
+        y_coord = distance if center is not None else None
 
         # Create data dictionary
         data = {"frame": frame_bytes_b64, "x": x_coord, "y": y_coord}
@@ -427,7 +429,7 @@ def main():
                 continue  # Skip processing for this iteration
 
             # Detect the ball
-            center, circleContour, vertices = ballDetector.detect(
+            center, circleContour, vertices, distance = ballDetector.detect(
                 frame.copy()
             )  # Work on a copy for detection
 
@@ -440,7 +442,7 @@ def main():
 
             # Encode data (resized frame and center coordinates)
             encoded_json_string = Encoder.encodeData(
-                frame_resized, center, quality=jpeg_quality
+                frame_resized, center, distance, quality=jpeg_quality
             )
 
             # Send data via UDP if encoding was successful
